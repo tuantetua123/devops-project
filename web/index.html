@@ -1,0 +1,26 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Điểm danh QR - Giảng viên</title>
+<style>body{font-family:system-ui,sans-serif;max-width:640px;margin:2rem auto;padding:0 1rem}
+input,select,button{padding:.5rem;margin:.25rem 0;font-size:1rem}img{max-width:100%}li{margin:.2rem 0}</style></head><body>
+<h1>Điểm danh QR</h1>
+<p><input id="key" type="password" placeholder="Admin key"></p>
+<h2>Lớp học</h2>
+<p><input id="code" placeholder="Mã lớp"> <input id="name" placeholder="Tên lớp"> <button onclick="addClass()">Tạo lớp</button></p>
+<p><select id="classes"></select> <button onclick="startSession()">Bắt đầu buổi học</button></p>
+<h2>Mã QR (tự đổi mỗi 30 giây)</h2>
+<img id="qr" alt="QR sẽ hiện ở đây"><p id="msg"></p>
+<h2>Đã điểm danh</h2><ul id="list"></ul>
+<script>
+let sid=null,H=()=>({"X-Admin-Key":document.getElementById("key").value,"Content-Type":"application/json"});
+const $=id=>document.getElementById(id);
+async function loadClasses(){const r=await fetch("/api/classes",{headers:H()});if(!r.ok){$("msg").textContent="Sai admin key";return}
+ $("classes").innerHTML=(await r.json()).map(c=>`<option value="${c.id}">${c.code} - ${c.name}</option>`).join("");$("msg").textContent=""}
+async function addClass(){await fetch("/api/classes",{method:"POST",headers:H(),body:JSON.stringify({code:$("code").value,name:$("name").value})});loadClasses()}
+async function startSession(){const r=await fetch("/api/sessions",{method:"POST",headers:H(),body:JSON.stringify({class_id:+$("classes").value})});
+ if(r.ok){sid=(await r.json()).id;refresh()}}
+async function refresh(){if(!sid)return;const r=await fetch(`/api/sessions/${sid}/qr`,{headers:H()});
+ if(r.ok)$("qr").src=URL.createObjectURL(await r.blob());
+ const a=await fetch(`/api/sessions/${sid}/attendance`,{headers:H()});
+ if(a.ok)$("list").innerHTML=(await a.json()).map(s=>`<li>${s.student_id} - ${s.student_name}</li>`).join("")}
+$("key").addEventListener("change",loadClasses);setInterval(refresh,30000);setInterval(()=>{if(sid)fetch(`/api/sessions/${sid}/attendance`,{headers:H()}).then(r=>r.json()).then(l=>$("list").innerHTML=l.map(s=>`<li>${s.student_id} - ${s.student_name}</li>`).join(""))},5000);
+</script></body></html>

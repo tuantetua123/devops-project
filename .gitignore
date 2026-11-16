@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.tfstate
+*.tfstate.*
+.terraform/
+*.retry
+vault-pass*

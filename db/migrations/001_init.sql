@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS classes (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(20) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sessions (
+  id SERIAL PRIMARY KEY,
+  class_id INT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS attendance (
+  id SERIAL PRIMARY KEY,
+  session_id INT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  student_id VARCHAR(20) NOT NULL,
+  student_name VARCHAR(100) NOT NULL,
+  checked_in_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (session_id, student_id)
+);

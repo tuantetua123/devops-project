@@ -1,0 +1,6 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Điểm danh</title><style>body{font-family:system-ui,sans-serif;max-width:420px;margin:2rem auto;padding:0 1rem}input,button{width:100%;padding:.7rem;margin:.3rem 0;font-size:1rem}</style></head><body>
+<h1>Điểm danh</h1><input id="sid" placeholder="MSSV"><input id="name" placeholder="Họ tên"><button onclick="go()">Điểm danh</button><p id="msg"></p>
+<script>async function go(){const token=new URLSearchParams(location.search).get("token");
+const r=await fetch("/api/checkin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,student_id:document.getElementById("sid").value,student_name:document.getElementById("name").value})});
+const d=await r.json();document.getElementById("msg").textContent=r.ok?(d.status==="ok"?"Điểm danh thành công!":"Bạn đã điểm danh rồi."):("Lỗi: "+d.detail+" (quét lại mã QR mới)")}</script></body></html>

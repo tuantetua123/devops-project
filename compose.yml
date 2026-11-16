@@ -1,0 +1,78 @@
+﻿name: attendance
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [appnet]
+
+  migrate:
+    image: postgres:16-alpine
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      - ./db/migrations:/migrations:ro
+    entrypoint: ["sh", "-c"]
+    command: ['for f in /migrations/*.sql; do psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$$f" || exit 1; done']
+    restart: "no"
+    networks: [appnet]
+
+  seed:
+    image: postgres:16-alpine
+    profiles: ["seed"]            # cháº¡y: docker compose run --rm seed
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      - ./db/seed:/seed:ro
+    entrypoint: ["sh", "-c", 'psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /seed/seed.sql']
+    networks: [appnet]
+
+  qr:
+    build: ./qr
+    environment:
+      QR_SECRET: ${QR_SECRET}
+      QR_TTL_SECONDS: ${QR_TTL_SECONDS:-45}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    networks: [appnet]
+
+  api:
+    build: ./api
+    depends_on:
+      db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+      qr: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      QR_SERVICE_URL: http://qr:8000
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    networks: [appnet]
+
+  web:
+    build: ./web
+    depends_on:
+      api: { condition: service_healthy }
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    networks: [appnet]
+
+networks:
+  appnet:
+
+volumes:
+  pgdata:

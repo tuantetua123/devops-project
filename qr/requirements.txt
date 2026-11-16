@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+segno
+prometheus-client
+pydantic
