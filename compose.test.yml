@@ -1,0 +1,21 @@
+# Integration smoke test:
+#   docker compose -p attendance-test -f compose.yml -f compose.test.yml run --rm smoke
+services:
+  smoke:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      api: { condition: service_healthy }
+      qr: { condition: service_healthy }
+      web: { condition: service_healthy }
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -e
+        curl -fsS http://api:8000/health
+        curl -fsS http://api:8000/metrics -o /dev/null
+        curl -fsS http://qr:8000/health
+        curl -fsS http://qr:8000/metrics -o /dev/null
+        curl -fsS http://web:8080/ -o /dev/null
+        echo SMOKE_OK
+    restart: "no"
+    networks: [appnet]
