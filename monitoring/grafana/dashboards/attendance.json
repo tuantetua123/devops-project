@@ -1,0 +1,290 @@
+{
+    "schemaVersion":  39,
+    "templating":  {
+                       "list":  [
+                                    {
+                                        "options":  [
+
+                                                    ],
+                                        "allValue":  ".*",
+                                        "type":  "custom",
+                                        "includeAll":  true,
+                                        "label":  "Service",
+                                        "query":  "api,qr,web,db",
+                                        "name":  "service",
+                                        "multi":  false,
+                                        "current":  {
+                                                        "selected":  true,
+                                                        "value":  "$__all",
+                                                        "text":  "All"
+                                                    }
+                                    },
+                                    {
+                                        "options":  [
+
+                                                    ],
+                                        "allValue":  ".*",
+                                        "type":  "custom",
+                                        "includeAll":  true,
+                                        "label":  "Level",
+                                        "query":  "ERROR,WARNING,INFO,DEBUG,CRITICAL",
+                                        "name":  "level",
+                                        "multi":  false,
+                                        "current":  {
+                                                        "selected":  true,
+                                                        "value":  "$__all",
+                                                        "text":  "All"
+                                                    }
+                                    }
+                                ]
+                   },
+    "version":  1,
+    "panels":  [
+                   {
+                       "id":  1,
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "none"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  0,
+                                       "w":  6,
+                                       "h":  8,
+                                       "x":  0
+                                   },
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{job}}",
+                                           "datasource":  {
+                                                              "type":  "prometheus",
+                                                              "uid":  "prom"
+                                                          },
+                                           "expr":  "up{job=~\"api|qr\"}",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prom"
+                                      },
+                       "type":  "stat",
+                       "title":  "Service up (1 = up)"
+                   },
+                   {
+                       "id":  2,
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "reqps"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  0,
+                                       "w":  9,
+                                       "h":  8,
+                                       "x":  6
+                                   },
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{job}}",
+                                           "datasource":  {
+                                                              "type":  "prometheus",
+                                                              "uid":  "prom"
+                                                          },
+                                           "expr":  "sum by (job) (rate(http_requests_total[1m]))",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prom"
+                                      },
+                       "type":  "timeseries",
+                       "title":  "Request rate (req/s)"
+                   },
+                   {
+                       "id":  3,
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "percent"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  0,
+                                       "w":  9,
+                                       "h":  8,
+                                       "x":  15
+                                   },
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{job}}",
+                                           "datasource":  {
+                                                              "type":  "prometheus",
+                                                              "uid":  "prom"
+                                                          },
+                                           "expr":  "100 * sum by (job) (rate(http_requests_total{status=~\"5..\"}[1m])) / sum by (job) (rate(http_requests_total[1m]))",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prom"
+                                      },
+                       "type":  "timeseries",
+                       "title":  "Error rate 5xx (%)"
+                   },
+                   {
+                       "id":  4,
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "s"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  8,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  0
+                                   },
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{job}}",
+                                           "datasource":  {
+                                                              "type":  "prometheus",
+                                                              "uid":  "prom"
+                                                          },
+                                           "expr":  "histogram_quantile(0.95, sum by (le, job) (rate(http_request_duration_seconds_bucket[1m])))",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prom"
+                                      },
+                       "type":  "timeseries",
+                       "title":  "Latency p95 (s)"
+                   },
+                   {
+                       "id":  5,
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "none"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  8,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  8
+                                   },
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{job}}",
+                                           "datasource":  {
+                                                              "type":  "prometheus",
+                                                              "uid":  "prom"
+                                                          },
+                                           "expr":  "rate(process_cpu_seconds_total{job=~\"api|qr\"}[1m])",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prom"
+                                      },
+                       "type":  "timeseries",
+                       "title":  "CPU (cores)"
+                   },
+                   {
+                       "id":  6,
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "bytes"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "gridPos":  {
+                                       "y":  8,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  16
+                                   },
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{job}}",
+                                           "datasource":  {
+                                                              "type":  "prometheus",
+                                                              "uid":  "prom"
+                                                          },
+                                           "expr":  "process_resident_memory_bytes{job=~\"api|qr\"}",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prom"
+                                      },
+                       "type":  "timeseries",
+                       "title":  "Memory (RSS)"
+                   },
+                   {
+                       "id":  7,
+                       "gridPos":  {
+                                       "y":  16,
+                                       "w":  24,
+                                       "h":  11,
+                                       "x":  0
+                                   },
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "type":  "loki",
+                                                              "uid":  "loki"
+                                                          },
+                                           "expr":  "{service=~\"$service\"} | json | level=~\"(?i)$level\"",
+                                           "refId":  "A",
+                                           "queryType":  "range"
+                                       }
+                                   ],
+                       "datasource":  {
+                                          "type":  "loki",
+                                          "uid":  "loki"
+                                      },
+                       "type":  "logs",
+                       "options":  {
+                                       "sortOrder":  "Descending",
+                                       "showTime":  true,
+                                       "wrapLogMessage":  true
+                                   },
+                       "title":  "Logs (filter by service and level)"
+                   }
+               ],
+    "tags":  [
+                 "attendance"
+             ],
+    "time":  {
+                 "to":  "now",
+                 "from":  "now-30m"
+             },
+    "timezone":  "browser",
+    "refresh":  "5s",
+    "title":  "Attendance - Overview",
+    "uid":  "attendance-overview"
+}
