@@ -1,11 +1,18 @@
-﻿name: attendance
+name: attendance
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop: [ALL]
 
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -31,7 +38,7 @@ services:
 
   seed:
     image: postgres:16-alpine
-    profiles: ["seed"]            # cháº¡y: docker compose run --rm seed
+    profiles: ["seed"]   # run: docker compose run --rm seed
     depends_on:
       migrate: { condition: service_completed_successfully }
     environment:
@@ -42,29 +49,47 @@ services:
     networks: [appnet]
 
   qr:
-    build: ./qr
+    <<: *hardening
+    image: ${REGISTRY:-local}/attendance-qr:${TAG:-dev}
+    build:
+      context: ./qr
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+        VERSION: ${TAG:-dev}
     environment:
-      QR_SECRET: ${QR_SECRET}
+      QR_SECRET: ${QR_SECRET:?set QR_SECRET in .env}
       QR_TTL_SECONDS: ${QR_TTL_SECONDS:-45}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:${WEB_PORT:-8080}}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     networks: [appnet]
 
   api:
-    build: ./api
+    <<: *hardening
+    image: ${REGISTRY:-local}/attendance-api:${TAG:-dev}
+    build:
+      context: ./api
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+        VERSION: ${TAG:-dev}
     depends_on:
       db: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
       qr: { condition: service_healthy }
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:?set ADMIN_API_KEY in .env}
       QR_SERVICE_URL: http://qr:8000
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     networks: [appnet]
 
   web:
-    build: ./web
+    <<: *hardening
+    image: ${REGISTRY:-local}/attendance-web:${TAG:-dev}
+    build:
+      context: ./web
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+        VERSION: ${TAG:-dev}
     depends_on:
       api: { condition: service_healthy }
     ports:
