@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: attendance-config
+data:
+  POSTGRES_USER: attendance
+  POSTGRES_DB: attendance
+  QR_TTL_SECONDS: "45"
+  LOG_LEVEL: INFO
+  QR_SERVICE_URL: http://qr:8000
+  PUBLIC_BASE_URL: http://localhost
