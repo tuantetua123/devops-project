@@ -1,0 +1,17 @@
+# __TOKEN__ and __CHAT__ are filled from env at container start (see compose.monitoring.yml)
+route:
+  receiver: telegram
+  group_by: [alertname, job]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+receivers:
+  - name: telegram
+    telegram_configs:
+      - bot_token: "__TOKEN__"
+        chat_id: __CHAT__
+        send_resolved: true
+        message: |-
+          [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}
+          {{ range .Alerts }}{{ .Annotations.summary }}
+          {{ end }}

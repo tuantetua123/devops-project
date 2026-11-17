@@ -1,0 +1,75 @@
+# Monitoring stack. Run together with the app:
+#   docker compose -f compose.yml -f compose.monitoring.yml up -d
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - promdata:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-19090}:9090"
+    networks: [appnet]
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sed -e "s|__TOKEN__|$$TELEGRAM_BOT_TOKEN|" -e "s|__CHAT__|$$TELEGRAM_CHAT_ID|" /etc/alertmanager/alertmanager.tmpl.yml > /tmp/alertmanager.yml
+        exec /bin/alertmanager --config.file=/tmp/alertmanager.yml --storage.path=/alertmanager
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-0:placeholder}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-1}
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.tmpl.yml:/etc/alertmanager/alertmanager.tmpl.yml:ro
+    ports:
+      - "${ALERTMANAGER_PORT:-19093}:9093"
+    networks: [appnet]
+
+  loki:
+    image: grafana/loki:3.2.0
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/loki.yml:ro
+      - lokidata:/loki
+    ports:
+      - "${LOKI_PORT:-13100}:3100"
+    networks: [appnet]
+
+  promtail:
+    image: grafana/promtail:3.2.0
+    restart: unless-stopped
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    depends_on: [loki]
+    volumes:
+      - ./monitoring/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [appnet]
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    restart: unless-stopped
+    depends_on: [prometheus, loki]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-13000}:3000"
+    networks: [appnet]
+
+volumes:
+  promdata:
+  lokidata:
+  grafanadata:
