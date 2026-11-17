@@ -8,3 +8,5 @@ __pycache__/
 .terraform/
 *.retry
 vault-pass*
+
+backups/

@@ -1,0 +1,13 @@
+[Unit]
+Description=Backup attendance PostgreSQL database
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/attendance
+Environment=BACKUP_DIR=/var/backups/attendance
+Environment=RETENTION_DAYS=7
+ExecStart=/opt/attendance/scripts/backup-db.sh
+StandardOutput=append:/var/log/attendance/backup.log
+StandardError=append:/var/log/attendance/backup.log
