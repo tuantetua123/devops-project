@@ -1,0 +1,37 @@
+---
+- name: Cài kubectl (khớp phiên bản k3s)
+  ansible.builtin.get_url:
+    url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/{{ dl_arch }}/kubectl"
+    dest: /usr/local/bin/kubectl
+    mode: "0755"
+    checksum: "sha256:https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/{{ dl_arch }}/kubectl.sha256"
+
+- name: Tạo thư mục Jenkins
+  ansible.builtin.file:
+    path: "{{ jenkins_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Đưa kubeconfig của cụm k3s cho Jenkins
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/fetched/k3s.yaml"
+    dest: "{{ jenkins_dir }}/kubeconfig"
+    mode: "0600"
+
+- name: Ghi file compose của Jenkins
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ jenkins_dir }}/compose.yml"
+    mode: "0644"
+
+- name: Chạy Jenkins
+  ansible.builtin.command: docker compose up -d
+  args:
+    chdir: "{{ jenkins_dir }}"
+  register: jenkins_up
+  changed_when: "'Started' in jenkins_up.stderr or 'Created' in jenkins_up.stderr or 'Recreated' in jenkins_up.stderr"
+
+- name: Chờ Jenkins mở cổng 8080
+  ansible.builtin.wait_for:
+    port: 8080
+    timeout: 180

@@ -1,0 +1,40 @@
+---
+- name: Cấu hình nền cho mọi máy
+  hosts: all
+  become: true
+  roles:
+    - common
+    - node_exporter
+
+- name: Cụm k3s - server
+  hosts: k3s_server
+  become: true
+  roles:
+    - k3s_server
+
+- name: Cụm k3s - agent
+  hosts: k3s_agent
+  become: true
+  roles:
+    - k3s_agent
+
+- name: Kiểm tra cụm đủ node
+  hosts: k3s_server
+  become: true
+  tasks:
+    - name: Chờ tất cả node ở trạng thái Ready
+      ansible.builtin.shell: set -o pipefail; k3s kubectl get nodes --no-headers | grep -cw Ready
+      args:
+        executable: /bin/bash
+      register: ready_nodes
+      until: ready_nodes.stdout | int == groups['k3s'] | length
+      retries: 30
+      delay: 10
+      changed_when: false
+
+- name: Máy Jenkins
+  hosts: ci
+  become: true
+  roles:
+    - docker
+    - jenkins

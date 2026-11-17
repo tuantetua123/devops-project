@@ -1,0 +1,13 @@
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform.tfvars
+# Vagrant (Vagrantfile do Terraform sinh ra)
+vagrant/.vagrant/
+vagrant/.keys/
+vagrant/Vagrantfile
+# Ansible
+ansible/vault-pass.txt
+ansible/fetched/
+ansible/inventories/local/group_vars/all/terraform.yml

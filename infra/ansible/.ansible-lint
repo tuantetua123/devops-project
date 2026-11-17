@@ -1,0 +1,3 @@
+# Biến dùng chung giữa các role (dl_arch, k3s_version...) là chủ ý, không đặt tiền tố theo role
+skip_list:
+  - var-naming[no-role-prefix]

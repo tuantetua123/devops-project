@@ -1,0 +1,18 @@
+timezone: Asia/Ho_Chi_Minh
+deploy_user: deploy
+deploy_ssh_public_key: ""
+base_packages: [ca-certificates, curl, gnupg, jq, ufw, chrony, unzip]
+network_cidr: 192.168.56.0/24
+# Giá trị dự phòng; Terraform ghi đè bằng group_vars/all/terraform.yml
+firewall_rules:
+  - { port: "22", proto: tcp, source: any, comment: ssh }
+  - { port: "80", proto: tcp, source: any, comment: http }
+  - { port: "443", proto: tcp, source: any, comment: https }
+  - { port: "6443", proto: tcp, source: 192.168.56.0/24, comment: k3s api }
+  - { port: "10250", proto: tcp, source: 192.168.56.0/24, comment: kubelet }
+  - { port: "8472", proto: udp, source: 192.168.56.0/24, comment: flannel vxlan }
+  - { port: "8080", proto: tcp, source: 192.168.56.0/24, comment: jenkins ui }
+  - { port: "50000", proto: tcp, source: 192.168.56.0/24, comment: jenkins agent }
+  - { port: "9100", proto: tcp, source: 192.168.56.0/24, comment: node exporter }
+  - { port: any, proto: any, source: 10.42.0.0/16, comment: k3s pod cidr }
+  - { port: any, proto: any, source: 10.43.0.0/16, comment: k3s service cidr }
