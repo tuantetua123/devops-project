@@ -1,0 +1,7 @@
+# Copy thành terraform.tfvars (đã nằm trong .gitignore) nếu muốn đổi cấu hình.
+# Máy yếu (RAM < 16GB): giảm RAM, k3s server cần tối thiểu ~1536MB.
+# nodes = {
+#   jenkins = { ip = "192.168.56.10", cpus = 2, memory = 2048, role = "control" }
+#   k3s-1   = { ip = "192.168.56.11", cpus = 2, memory = 1536, role = "server" }
+#   k3s-2   = { ip = "192.168.56.12", cpus = 1, memory = 1536, role = "agent" }
+# }

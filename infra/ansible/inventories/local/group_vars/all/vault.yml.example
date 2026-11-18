@@ -1,0 +1,2 @@
+# Bí mật. File thật là vault.yml (mã hóa bằng: ansible-vault encrypt vault.yml)
+vault_k3s_token: "doi-thanh-chuoi-ngau-nhien-dai"
