@@ -24,4 +24,5 @@ pip install -r qr/requirements.txt -r qr/requirements-dev.txt && pytest qr/tests
 ## TÃ i liá»‡u
 - `docs/ROADMAP.md`: checklist 12 bÃ i + ká»‹ch báº£n demo
 
-Lýu ?: n?u c?ng 8080 b? chi?m, ð?t WEB_PORT trong .env (ví d? 18080) và ð?i PUBLIC_BASE_URL cho kh?p.
+Lï¿½u ?: n?u c?ng 8080 b? chi?m, ï¿½?t WEB_PORT trong .env (vï¿½ d? 18080) vï¿½ ï¿½?i PUBLIC_BASE_URL cho kh?p.
+////
