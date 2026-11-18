@@ -1,10 +1,17 @@
 ---
+- name: Lấy mã sha256 của kubectl
+  ansible.builtin.uri:
+    url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/{{ dl_arch }}/kubectl.sha256"
+    return_content: true
+  register: kubectl_sha256
+  changed_when: false
+
 - name: Cài kubectl (khớp phiên bản k3s)
   ansible.builtin.get_url:
     url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/{{ dl_arch }}/kubectl"
     dest: /usr/local/bin/kubectl
     mode: "0755"
-    checksum: "sha256:https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/{{ dl_arch }}/kubectl.sha256"
+    checksum: "sha256:{{ kubectl_sha256.content | trim }}"
 
 - name: Tạo thư mục Jenkins
   ansible.builtin.file:
