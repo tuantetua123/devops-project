@@ -1,26 +1,679 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Điểm danh QR - Giảng viên</title>
-<style>body{font-family:system-ui,sans-serif;max-width:640px;margin:2rem auto;padding:0 1rem}
-input,select,button{padding:.5rem;margin:.25rem 0;font-size:1rem}img{max-width:100%}li{margin:.2rem 0}</style></head><body>
-<h1>Điểm danh QR</h1>
-<p><input id="key" type="password" placeholder="Admin key"></p>
-<h2>Lớp học</h2>
-<p><input id="code" placeholder="Mã lớp"> <input id="name" placeholder="Tên lớp"> <button onclick="addClass()">Tạo lớp</button></p>
-<p><select id="classes"></select> <button onclick="startSession()">Bắt đầu buổi học</button></p>
-<h2>Mã QR (tự đổi mỗi 30 giây)</h2>
-<img id="qr" alt="QR sẽ hiện ở đây"><p id="msg"></p>
-<h2>Đã điểm danh</h2><ul id="list"></ul>
-<script>
-let sid=null,H=()=>({"X-Admin-Key":document.getElementById("key").value,"Content-Type":"application/json"});
-const $=id=>document.getElementById(id);
-async function loadClasses(){const r=await fetch("/api/classes",{headers:H()});if(!r.ok){$("msg").textContent="Sai admin key";return}
- $("classes").innerHTML=(await r.json()).map(c=>`<option value="${c.id}">${c.code} - ${c.name}</option>`).join("");$("msg").textContent=""}
-async function addClass(){await fetch("/api/classes",{method:"POST",headers:H(),body:JSON.stringify({code:$("code").value,name:$("name").value})});loadClasses()}
-async function startSession(){const r=await fetch("/api/sessions",{method:"POST",headers:H(),body:JSON.stringify({class_id:+$("classes").value})});
- if(r.ok){sid=(await r.json()).id;refresh()}}
-async function refresh(){if(!sid)return;const r=await fetch(`/api/sessions/${sid}/qr`,{headers:H()});
- if(r.ok)$("qr").src=URL.createObjectURL(await r.blob());
- const a=await fetch(`/api/sessions/${sid}/attendance`,{headers:H()});
- if(a.ok)$("list").innerHTML=(await a.json()).map(s=>`<li>${s.student_id} - ${s.student_name}</li>`).join("")}
-$("key").addEventListener("change",loadClasses);setInterval(refresh,30000);setInterval(()=>{if(sid)fetch(`/api/sessions/${sid}/attendance`,{headers:H()}).then(r=>r.json()).then(l=>$("list").innerHTML=l.map(s=>`<li>${s.student_id} - ${s.student_name}</li>`).join(""))},5000);
-</script></body></html>
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>QR Attendance - Giảng viên</title>
+  <style>
+    :root {
+      --blue:#2563eb;
+      --dark:#142c55;
+      --gray:#64748b;
+      --line:#e2e8f0;
+    }
+    * { box-sizing:border-box }
+    body {
+      margin:0;
+      background:#f4f7fc;
+      color:#17243e;
+      font-family:Arial,sans-serif;
+    }
+    header {
+      background:white;
+      border-bottom:1px solid var(--line);
+      padding:19px 6%;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    header strong { font-size:22px;color:var(--blue) }
+    header span { font-size:13px;color:var(--gray) }
+    main { max-width:1140px;margin:34px auto;padding:0 18px }
+    h1 { margin:0 0 8px;color:var(--dark) }
+    .sub { color:var(--gray);margin:0 0 24px;font-size:14px }
+    .layout {
+      display:grid;
+      grid-template-columns:320px 1fr;
+      gap:18px;
+    }
+    .stack { display:grid;gap:18px;align-content:start }
+    .card {
+      background:white;
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:22px;
+      box-shadow:0 5px 24px #1d4ed808;
+    }
+    h2 { font-size:17px;margin:0 0 16px;color:var(--dark) }
+    label {
+      font-size:13px;
+      font-weight:bold;
+      display:block;
+      margin:12px 0 6px;
+    }
+    input,select {
+      font:inherit;
+      width:100%;
+      border:1px solid #cbd5e1;
+      border-radius:8px;
+      padding:12px;
+      min-width:0;
+      background:white;
+    }
+    input:focus,select:focus {
+      outline:2px solid #bfdbfe;
+      border-color:var(--blue);
+    }
+    button {
+      cursor:pointer;
+      font-weight:bold;
+      border:0;
+      background:var(--blue);
+      color:white;
+      border-radius:8px;
+      padding:12px 15px;
+    }
+    button:disabled { opacity:.5;cursor:not-allowed }
+    .full { width:100%;margin-top:14px }
+    .secondary { background:#eaf1ff;color:#1d4ed8 }
+    .banner {
+      background:linear-gradient(110deg,#172554,#2563eb);
+      color:white;
+      border-radius:14px;
+      padding:24px;
+    }
+    .banner h2 { color:white;font-size:21px;margin:8px 0 }
+    .banner p { color:#dbeafe;margin:0;font-size:13px }
+    .two { display:grid;grid-template-columns:1fr 1fr;gap:18px }
+    .qr-box { text-align:center;min-height:285px }
+    .qr-box img {
+      display:block;
+      max-width:220px;
+      width:100%;
+      margin:12px auto;
+      border:9px solid #f1f5f9;
+      border-radius:12px;
+    }
+    .qr-box img[hidden] { display:none }
+    .muted {
+      color:var(--gray);
+      font-size:13px;
+      line-height:1.6;
+    }
+    .steps {
+      padding-left:20px;
+      font-size:14px;
+      line-height:2;
+      color:#475569;
+    }
+    .toolbar {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .toolbar input { flex:1;min-width:170px }
+    .table-wrap { overflow-x:auto }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      margin-top:14px;
+      font-size:14px;
+    }
+    th,td {
+      text-align:left;
+      padding:13px 10px;
+      border-bottom:1px solid var(--line);
+    }
+    th { background:#f8fafc;color:#475569 }
+    .message {
+      margin:12px 0 0;
+      padding:12px;
+      border-radius:8px;
+      background:#eff6ff;
+      color:#1e40af;
+      font-size:13px;
+      display:none;
+    }
+    .message.error { background:#fff1f2;color:#b91c1c }
+    .message.success { background:#ecfdf5;color:#166534 }
+    .message.show { display:block }
+    .foot {
+      margin:28px 0;
+      text-align:center;
+      color:#94a3b8;
+      font-size:12px;
+    }
+    @media(max-width:850px) {
+      .layout,.two { grid-template-columns:1fr }
+    }
+    @media(max-width:500px) {
+      header { padding:16px }
+      header span { display:none }
+      main { margin-top:22px }
+      .card { padding:18px }
+      .toolbar button { flex:1 }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>▣ QR Attendance</strong>
+    <span>Trang quản lý dành cho giảng viên</span>
+  </header>
+
+  <main>
+    <h1>Quản lý điểm danh</h1>
+    <p class="sub">
+      Tạo lớp học, tạo mã QR và theo dõi danh sách sinh viên đã điểm danh.
+    </p>
+
+    <div class="layout">
+      <aside class="stack">
+        <section class="card">
+          <h2>1. Kết nối hệ thống</h2>
+          <label for="key">Admin API Key</label>
+          <input id="key" type="password"
+                 placeholder="Nhập khóa quản trị" autocomplete="off">
+          <button class="full" id="connectBtn">
+            Kết nối và tải lớp học
+          </button>
+          <p class="muted">
+            Khóa chỉ nằm trong ô nhập, không lưu trên trình duyệt.
+          </p>
+          <p id="notice" class="message" role="status"></p>
+        </section>
+
+        <section class="card">
+          <h2>2. Tạo lớp học</h2>
+          <form id="classForm">
+            <label for="code">Mã lớp</label>
+            <input id="code" maxlength="20"
+                   placeholder="Ví dụ: CNTT01" required>
+
+            <label for="name">Tên lớp</label>
+            <input id="name" maxlength="100"
+                   placeholder="Ví dụ: Công nghệ thông tin" required>
+
+            <button class="full secondary"
+                    type="submit" id="createBtn">
+              + Tạo lớp mới
+            </button>
+          </form>
+        </section>
+
+        <section class="card">
+          <h2>3. Bắt đầu điểm danh</h2>
+          <label for="classes">Chọn lớp học</label>
+          <select id="classes">
+            <option value="">Hãy kết nối trước</option>
+          </select>
+          <button class="full" id="startBtn" disabled>
+            Bắt đầu buổi học
+          </button>
+        </section>
+      </aside>
+
+      <div class="stack">
+        <section class="banner">
+          <div style="font-size:12px;opacity:.8">
+            BUỔI HỌC HIỆN TẠI
+          </div>
+          <h2 id="sessionTitle">Chưa bắt đầu buổi học</h2>
+          <p id="sessionInfo">
+            Hãy chọn một lớp và nhấn Bắt đầu buổi học.
+          </p>
+        </section>
+
+        <div class="two">
+          <section class="card qr-box">
+            <h2>Mã QR điểm danh</h2>
+            <img id="qrImage" alt="Mã QR để sinh viên quét" hidden>
+            <p id="qrText" class="muted">
+              QR sẽ xuất hiện khi bắt đầu buổi học.
+            </p>
+            <p id="timer" class="muted"></p>
+            <button class="secondary" id="qrBtn" disabled>
+              Làm mới QR
+            </button>
+          </section>
+
+          <section class="card">
+            <h2>Hướng dẫn sử dụng</h2>
+            <ol class="steps">
+              <li>Kết nối bằng Admin API Key.</li>
+              <li>Tạo hoặc chọn lớp học.</li>
+              <li>Bắt đầu buổi học để hiện QR.</li>
+              <li>Sinh viên quét QR bằng điện thoại.</li>
+              <li>Theo dõi kết quả ở bảng bên dưới.</li>
+            </ol>
+            <p class="muted">
+              Điện thoại phải truy cập được địa chỉ
+              PUBLIC_BASE_URL mà nhóm đã cấu hình.
+            </p>
+          </section>
+        </div>
+
+        <section class="card">
+          <h2>
+            Danh sách đã điểm danh
+            (<span id="total">0</span>)
+          </h2>
+          <div class="toolbar">
+            <input id="search" type="search"
+                   placeholder="Tìm MSSV hoặc họ tên">
+            <button class="secondary" id="reloadBtn" disabled>
+              Làm mới
+            </button>
+            <button id="csvBtn" disabled>Xuất CSV</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th>MSSV</th>
+                  <th>Họ tên</th>
+                  <th>Thời gian</th>
+                </tr>
+              </thead>
+              <tbody id="rows">
+                <tr>
+                  <td colspan="4">Chưa có dữ liệu điểm danh.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="foot">QR Attendance · Đồ án DevOps</div>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    let currentSession = null;
+    let attendance = [];
+    let qrObjectUrl = null;
+    let nextQR = 0;
+    let loadingQR = false;
+    let loadingAttendance = false;
+
+    const apiKey = () => $('key').value.trim();
+
+    function show(text, type = '') {
+      $('notice').textContent = text;
+      $('notice').className = 'message show ' + type;
+    }
+
+    async function api(path, options = {}) {
+      let response;
+      try {
+        response = await fetch(path, {
+          ...options,
+          cache: 'no-store',
+          headers: {
+            'X-Admin-Key': apiKey(),
+            'Content-Type': 'application/json',
+            ...(options.headers || {})
+          }
+        });
+      } catch {
+        throw new Error(
+          'Không thể kết nối máy chủ. Hãy kiểm tra Docker.'
+        );
+      }
+
+      if (!response.ok) {
+        let detail = '';
+        try {
+          detail = (await response.json()).detail || '';
+        } catch {}
+
+        if (response.status === 401)
+          throw new Error('Admin API Key không đúng.');
+
+        if (response.status === 409)
+          throw new Error('Mã lớp đã tồn tại.');
+
+        throw new Error(
+          typeof detail === 'string' && detail
+            ? detail
+            : `Lỗi máy chủ (${response.status}).`
+        );
+      }
+      return response;
+    }
+
+    function resetSession() {
+      currentSession = null;
+      attendance = [];
+      nextQR = 0;
+
+      if (qrObjectUrl) URL.revokeObjectURL(qrObjectUrl);
+      qrObjectUrl = null;
+
+      $('qrImage').hidden = true;
+      $('qrImage').removeAttribute('src');
+      $('qrText').textContent =
+        'QR sẽ xuất hiện khi bắt đầu buổi học.';
+      $('sessionTitle').textContent =
+        'Chưa bắt đầu buổi học';
+      $('sessionInfo').textContent =
+        'Hãy chọn một lớp và nhấn Bắt đầu buổi học.';
+
+      $('qrBtn').disabled = true;
+      $('reloadBtn').disabled = true;
+      $('csvBtn').disabled = true;
+      $('timer').textContent = '';
+
+      renderRows();
+    }
+
+    async function loadClasses(selectedId = '') {
+      const classes =
+        await (await api('/api/classes')).json();
+
+      $('classes').replaceChildren(
+        new Option('Chọn lớp học', '')
+      );
+
+      classes.forEach(c => {
+        $('classes').add(
+          new Option(`${c.code} - ${c.name}`, c.id)
+        );
+      });
+
+      if (selectedId)
+        $('classes').value = String(selectedId);
+
+      $('startBtn').disabled = !$('classes').value;
+      return classes.length;
+    }
+
+    $('connectBtn').onclick = async () => {
+      if (!apiKey())
+        return show('Vui lòng nhập Admin API Key.', 'error');
+
+      $('connectBtn').disabled = true;
+
+      try {
+        resetSession();
+        const count = await loadClasses();
+        show(
+          `Kết nối thành công. Đã tải ${count} lớp.`,
+          'success'
+        );
+      } catch (err) {
+        show(err.message, 'error');
+      } finally {
+        $('connectBtn').disabled = false;
+      }
+    };
+
+    $('key').oninput = () => {
+      $('classes').replaceChildren(
+        new Option('Hãy kết nối trước', '')
+      );
+      $('startBtn').disabled = true;
+      resetSession();
+    };
+
+    $('classes').onchange = () => {
+      $('startBtn').disabled = !$('classes').value;
+    };
+
+    $('classForm').onsubmit = async event => {
+      event.preventDefault();
+
+      if (!apiKey())
+        return show(
+          'Hãy nhập Admin API Key và kết nối trước.',
+          'error'
+        );
+
+      $('createBtn').disabled = true;
+
+      try {
+        const data = await (
+          await api('/api/classes', {
+            method: 'POST',
+            body: JSON.stringify({
+              code: $('code').value.trim(),
+              name: $('name').value.trim()
+            })
+          })
+        ).json();
+
+        await loadClasses(data.id);
+        $('classForm').reset();
+        show('Đã tạo lớp học thành công.', 'success');
+      } catch (err) {
+        show(err.message, 'error');
+      } finally {
+        $('createBtn').disabled = false;
+      }
+    };
+
+    $('startBtn').onclick = async () => {
+      const classId = Number($('classes').value);
+      if (!classId) return;
+
+      $('startBtn').disabled = true;
+
+      try {
+        const data = await (
+          await api('/api/sessions', {
+            method: 'POST',
+            body: JSON.stringify({ class_id: classId })
+          })
+        ).json();
+
+        resetSession();
+        currentSession = data.id;
+
+        $('sessionTitle').textContent =
+          $('classes').selectedOptions[0].textContent;
+
+        $('sessionInfo').textContent =
+          `Buổi học #${data.id} đang nhận điểm danh.`;
+
+        $('qrBtn').disabled = false;
+        $('reloadBtn').disabled = false;
+        $('csvBtn').disabled = false;
+
+        show(
+          'Đã bắt đầu buổi học. Sinh viên có thể quét QR.',
+          'success'
+        );
+
+        await Promise.all([
+          refreshQR(),
+          refreshAttendance()
+        ]);
+      } catch (err) {
+        show(err.message, 'error');
+      } finally {
+        $('startBtn').disabled = !$('classes').value;
+      }
+    };
+
+    async function refreshQR() {
+      if (!currentSession || loadingQR) return;
+
+      loadingQR = true;
+      const session = currentSession;
+
+      try {
+        const blob = await (
+          await api(`/api/sessions/${session}/qr`)
+        ).blob();
+
+        if (session !== currentSession) return;
+
+        const url = URL.createObjectURL(blob);
+
+        if (qrObjectUrl)
+          URL.revokeObjectURL(qrObjectUrl);
+
+        qrObjectUrl = url;
+
+        $('qrImage').src = url;
+        $('qrImage').hidden = false;
+        $('qrText').textContent =
+          'Sinh viên quét mã bằng điện thoại để điểm danh.';
+
+        nextQR = Date.now() + 30000;
+      } catch (err) {
+        show('Không tải được QR: ' + err.message, 'error');
+      } finally {
+        loadingQR = false;
+      }
+    }
+
+    function renderRows() {
+      const keyword = $('search').value.trim().toLowerCase();
+
+      const found = attendance.filter(s =>
+        `${s.student_id} ${s.student_name}`
+          .toLowerCase()
+          .includes(keyword)
+      );
+
+      const body = $('rows');
+      body.replaceChildren();
+      $('total').textContent = attendance.length;
+
+      if (!found.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+
+        td.colSpan = 4;
+        td.textContent = attendance.length
+          ? 'Không tìm thấy sinh viên.'
+          : 'Chưa có sinh viên điểm danh.';
+
+        tr.appendChild(td);
+        body.appendChild(tr);
+        return;
+      }
+
+      found.forEach((s, index) => {
+        const tr = document.createElement('tr');
+        const when = new Date(s.checked_in_at);
+
+        const values = [
+          index + 1,
+          s.student_id,
+          s.student_name,
+          Number.isNaN(when.getTime())
+            ? s.checked_in_at
+            : when.toLocaleString('vi-VN')
+        ];
+
+        values.forEach(value => {
+          const td = document.createElement('td');
+          td.textContent = value;
+          tr.appendChild(td);
+        });
+
+        body.appendChild(tr);
+      });
+    }
+
+    async function refreshAttendance() {
+      if (!currentSession || loadingAttendance) return;
+
+      loadingAttendance = true;
+      const session = currentSession;
+
+      try {
+        const rows = await (
+          await api(`/api/sessions/${session}/attendance`)
+        ).json();
+
+        if (session === currentSession) {
+          attendance = rows;
+          renderRows();
+        }
+      } catch (err) {
+        show(err.message, 'error');
+      } finally {
+        loadingAttendance = false;
+      }
+    }
+
+    function csvField(value) {
+      let text = String(value ?? '');
+
+      if (/^\s*[=+\-@]/.test(text))
+        text = "'" + text;
+
+      return '"' + text.replace(/"/g, '""') + '"';
+    }
+
+    $('csvBtn').onclick = () => {
+      if (!currentSession) return;
+
+      const lines = [
+        ['MSSV', 'Họ tên', 'Thời gian'],
+        ...attendance.map(s => [
+          s.student_id,
+          s.student_name,
+          s.checked_in_at
+        ])
+      ];
+
+      const csv = '\ufeff' + lines
+        .map(line => line.map(csvField).join(','))
+        .join('\r\n');
+
+      const url = URL.createObjectURL(
+        new Blob([csv], {
+          type: 'text/csv;charset=utf-8'
+        })
+      );
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `diem-danh-${currentSession}.csv`;
+      a.click();
+
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+
+    $('search').oninput = renderRows;
+
+    $('reloadBtn').onclick = () => {
+      refreshAttendance();
+      refreshQR();
+    };
+
+    setInterval(() => {
+      if (currentSession) refreshAttendance();
+    }, 5000);
+
+    setInterval(() => {
+      if (!currentSession || !nextQR) return;
+
+      const remain = Math.max(
+        0,
+        Math.ceil((nextQR - Date.now()) / 1000)
+      );
+
+      $('timer').textContent =
+        `QR tự đổi sau ${remain} giây`;
+
+      if (!remain) refreshQR();
+    }, 1000);
+
+    window.addEventListener('beforeunload', () => {
+      if (qrObjectUrl) URL.revokeObjectURL(qrObjectUrl);
+    });
+  </script>
+</body>
+</html>
