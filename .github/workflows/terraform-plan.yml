@@ -1,9 +1,12 @@
+
 name: Terraform CI
 
 on:
   pull_request:
+    branches:
+      - main
     paths:
-      - "terraform/**"
+      - "infra/terraform/**"
       - ".github/workflows/terraform-plan.yml"
 
 permissions:
@@ -15,7 +18,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: terraform/environments/staging
+        working-directory: infra/terraform/environments/staging
 
     steps:
       - name: Checkout repository
