@@ -1,5 +1,7 @@
+
 name: attendance
 
+# Shared security hardening
 x-hardening: &hardening
   restart: unless-stopped
   security_opt:
@@ -7,6 +9,8 @@ x-hardening: &hardening
   cap_drop: [ALL]
 
 services:
+
+  # PostgreSQL Database
   db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -23,6 +27,7 @@ services:
       retries: 10
     networks: [appnet]
 
+  # Database migrations
   migrate:
     image: postgres:16-alpine
     depends_on:
@@ -32,24 +37,35 @@ services:
     volumes:
       - ./db/migrations:/migrations:ro
     entrypoint: ["sh", "-c"]
-    command: ['for f in /migrations/*.sql; do psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$$f" || exit 1; done']
+    command:
+      - 'for f in /migrations/*.sql; do psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$$f" || exit 1; done'
     restart: "no"
     networks: [appnet]
 
+  # Seed sample data
   seed:
     image: postgres:16-alpine
-    profiles: ["seed"]   # run: docker compose run --rm seed
+    profiles: ["seed"]
     depends_on:
       migrate: { condition: service_completed_successfully }
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     volumes:
       - ./db/seed:/seed:ro
-    entrypoint: ["sh", "-c", 'psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /seed/seed.sql']
+    entrypoint:
+      - sh
+      - -c
+      - 'psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /seed/seed.sql'
     networks: [appnet]
 
+  # QR Service - Security Hardened
   qr:
     <<: *hardening
+
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=64m
+
     image: ${REGISTRY:-local}/attendance-qr:${TAG:-dev}
     build:
       context: ./qr
@@ -63,8 +79,14 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     networks: [appnet]
 
+  # FastAPI Backend - Security Hardened
   api:
     <<: *hardening
+
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=64m
+
     image: ${REGISTRY:-local}/attendance-api:${TAG:-dev}
     build:
       context: ./api
@@ -82,8 +104,14 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     networks: [appnet]
 
+  # Nginx Frontend - Security Hardened
   web:
     <<: *hardening
+
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+
     image: ${REGISTRY:-local}/attendance-web:${TAG:-dev}
     build:
       context: ./web
