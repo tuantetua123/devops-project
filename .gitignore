@@ -7,6 +7,27 @@ __pycache__/
 *.tfstate.*
 .terraform/
 *.retry
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# Variables containing secrets
+*.auto.tfvars
+terraform.tfvars
+
 vault-pass*
 
 backups/
+
+# VirtualBox Vagrant boxes
+terraform/images/*.box
+
+# Terraform state and backups
+*.tfstate
+*.tfstate.*
+terraform-state-backup*.json
+*.box
