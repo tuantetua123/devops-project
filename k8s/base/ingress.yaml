@@ -2,8 +2,15 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: attendance
+  annotations:
+    cert-manager.io/cluster-issuer: selfsigned-cluster-issuer
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - attendance.local
+      secretName: attendance-tls
   rules:
     - host: attendance.local
       http:

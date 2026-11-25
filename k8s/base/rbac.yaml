@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: attendance-api-sa
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: attendance-qr-sa
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: attendance-web-sa
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: attendance-minimal-role
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["attendance-config"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: attendance-minimal-binding
+subjects:
+  - kind: ServiceAccount
+    name: attendance-api-sa
+  - kind: ServiceAccount
+    name: attendance-qr-sa
+roleRef:
+  kind: Role
+  name: attendance-minimal-role
+  apiGroup: rbac.authorization.k8s.io

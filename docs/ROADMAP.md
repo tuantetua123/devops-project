@@ -1,18 +1,15 @@
-# Checklist theo 12 bài (đánh dấu khi xong)
+# Bảng Theo Dõi Tiến Độ 12 Bài Đồ Án DevOps — Nhóm 7
 
-- [x] B4  Dockerfile multi-stage, non-root, HEALTHCHECK, .dockerignore (api, qr, web)
-- [x] B5  compose.yml: healthcheck, depends_on healthy, network riêng, volume, .env.example
-- [ ] B2  Repo GitHub, bảo vệ main, PR + review, Conventional Commits, tag semver
-- [ ] B1  Sơ đồ kiến trúc, quy trình nhóm, Definition of Done
-- [ ] B3  Script backup Postgres (cron/systemd timer), health check, ufw, SSH key
-- [ ] B8  Terraform: 3 VM, network, firewall, 1 module tự viết
-- [ ] B7  Ansible: role docker, k3s, jenkins-agent, node-exporter; vault; idempotent
-- [ ] B9  K8s: Deployment/Service/Ingress/ConfigMap/Secret/probe/HPA; ns staging+production; Kustomize
-- [ ] B9+ Migration bằng K8s Job + seed Job (thử thách riêng)
-- [ ] B6  Jenkinsfile: lint→test→build→scan→push→staging→duyệt→production
-- [ ] B11 gitleaks, Trivy chặn CRITICAL, cert-manager, RBAC
-- [ ] B10 Prometheus, Grafana, Alertmanager→Telegram, Loki+Promtail
-- [ ] B12 Production trên cloud / bảng chi phí
-- [ ] Báo cáo, runbook, postmortem, video demo, export Grafana
-
-# 8 bước demo: xem đề bài trang 6
+- [x] **B1:** Quy trình làm việc nhóm, phân vai, kiến trúc hệ thống
+- [x] **B2:** Repo GitHub, Conventional Commits, tag semver (`v0.1.0`, `v0.2.0`), GitHub Actions CI
+- [x] **B3:** Script backup/restore Postgres (`scripts/`), `systemd timer`, `logrotate`, bảo mật Linux
+- [x] **B4:** Dockerfile multi-stage, non-root, `HEALTHCHECK`, `.dockerignore` (`api`, `qr`, `web`)
+- [x] **B5:** `compose.yml` (hardening, healthcheck, migrate, seed), `compose.test.yml`, `compose.monitoring.yml`
+- [x] **B6:** `Jenkinsfile` declarative: Gitleaks -> Lint -> Unit test -> Smoke test -> Trivy -> Push GHCR -> Deploy staging -> Approve -> Deploy production -> Telegram
+- [x] **B7:** Ansible chia 6 roles (`common`, `docker`, `jenkins`, `k3s_server`, `k3s_agent`, `node_exporter`) + Ansible Vault
+- [x] **B8:** Terraform dựng 3 VM + mạng + module `local-cluster` (`infra/terraform`)
+- [x] **B9:** Kubernetes (`Deployment`, `Service`, `Ingress`, `ConfigMap`, `Secret`, `HPA`), tách namespace `staging`/`production`, Kustomize + PDB
+- [x] **B9+:** Thử thách riêng Đề tài 02: Migration CSDL (`migrate-job.yaml`) & Seed dữ liệu mẫu (`seed-job.yaml`) bằng K8s Job trong pipeline
+- [x] **B10:** Prometheus + Grafana + Alertmanager (Telegram) + Loki + Promtail + Load test k6
+- [x] **B11:** Gitleaks, Trivy chặn lỗi `CRITICAL`, HTTPS Ingress (`cert-manager`), RBAC tối thiểu quyền (`rbac.yaml`)
+- [x] **B12 & Tài liệu:** Bảng ước tính chi phí Cloud (`CLOUD_COST.md`), `RUNBOOK.md`, `POSTMORTEM.md`, `REPORT.md`

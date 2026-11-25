@@ -32,10 +32,16 @@ patches:
       - op: replace
         path: /spec/rules/0/host
         value: staging.attendance.local
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: staging.attendance.local
+      - op: replace
+        path: /spec/tls/0/secretName
+        value: staging-attendance-tls
   - target:
       kind: ConfigMap
       name: attendance-config
     patch: |-
       - op: replace
         path: /data/PUBLIC_BASE_URL
-        value: http://staging.attendance.local
+        value: https://staging.attendance.local
