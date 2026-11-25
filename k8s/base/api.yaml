@@ -34,6 +34,7 @@ spec:
         prometheus.io/port: "8000"
         prometheus.io/path: /metrics
     spec:
+      serviceAccountName: attendance-api-sa
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true

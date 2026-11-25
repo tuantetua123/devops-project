@@ -63,8 +63,12 @@ pipeline {
     stage('Unit test') {
       steps {
         sh '''
-          docker run --rm -v "$WORKSPACE/qr":/w -w /w -e PYTHONPATH=/w:/w/app python:3.12-slim \
-            sh -c "pip install -q -r requirements.txt -r requirements-dev.txt && python -m pytest -q tests"
+          for svc in api qr; do
+            if [ -d "$svc/tests" ]; then
+              docker run --rm -v "$WORKSPACE/$svc":/w -w /w -e PYTHONPATH=/w:/w/app python:3.12-slim \
+                sh -c "pip install -q -r requirements.txt && ([ -f requirements-dev.txt ] && pip install -q -r requirements-dev.txt || pip install -q pytest) && python -m pytest -q tests"
+            fi
+          done
         '''
       }
     }
@@ -119,6 +123,17 @@ pipeline {
       steps {
         withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
           sh '''
+            kubectl apply -f k8s/namespaces.yaml
+            kubectl -n staging create configmap db-migrations --from-file=db/migrations --dry-run=client -o yaml | kubectl -n staging apply -f -
+            kubectl -n staging create configmap db-seed-data --from-file=db/seed --dry-run=client -o yaml | kubectl -n staging apply -f -
+
+            MIGRATE_JOB=$(kubectl -n staging create -f k8s/jobs/migrate-job.yaml -o name)
+            kubectl -n staging wait --for=condition=complete "$MIGRATE_JOB" --timeout=90s
+
+            SEED_JOB=$(kubectl -n staging create -f k8s/jobs/seed-job.yaml -o name)
+            kubectl -n staging wait --for=condition=complete "$SEED_JOB" --timeout=90s
+
+            kubectl apply -k k8s/overlays/staging
             for svc in api qr web; do
               kubectl -n staging set image deployment/$svc $svc=$REGISTRY/attendance-$svc:$TAG
               kubectl -n staging rollout status deployment/$svc --timeout=120s
@@ -152,6 +167,12 @@ pipeline {
       steps {
         withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
           sh '''
+            kubectl -n production create configmap db-migrations --from-file=db/migrations --dry-run=client -o yaml | kubectl -n production apply -f -
+
+            MIGRATE_JOB=$(kubectl -n production create -f k8s/jobs/migrate-job.yaml -o name)
+            kubectl -n production wait --for=condition=complete "$MIGRATE_JOB" --timeout=90s
+
+            kubectl apply -k k8s/overlays/production
             for svc in api qr web; do
               kubectl -n production set image deployment/$svc $svc=$REGISTRY/attendance-$svc:$TAG
               kubectl -n production rollout status deployment/$svc --timeout=120s
