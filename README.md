@@ -23,6 +23,3 @@ pip install -r qr/requirements.txt -r qr/requirements-dev.txt && pytest qr/tests
 
 ## Tài liệu
 - `docs/ROADMAP.md`: checklist 12 bài + kịch bản demo
-
-
-## test
